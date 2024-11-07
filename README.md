@@ -1,6 +1,8 @@
 # check_copyright
 
-Espressif repository for the script to check SPDX License Header in the files. 
+Repository for the script to check SPDX License Header in the files.
+Original from Espressif systems (https://github.com/espressif/check-copyright/)
+Customized for Vaillant-Group needs (make it more configurable and parse also js & qml files)
 
 # Information about optional parameters
 
@@ -20,7 +22,7 @@ Espressif repository for the script to check SPDX License Header in the files.
 
 # How to add check to a new project
 
-## Prepare steps:
+## Prepare steps
 
 If you want to add that script into your project, you should
 
@@ -34,8 +36,9 @@ You can use this script as a [pre-commit](https://pre-commit.com/) hook. You sho
 You can also add external arguments from the table above (i.e --verbose)
 
 Example of the .pre-commit-config.yaml file 
+
 ```yaml
-- repo: https://github.com/espressif/check-copyright/
+- repo: https://github.com/Vaillant-NEEXT/check-copyright/
   rev: v1.0.0
   hooks:
     - id: check-copyright
@@ -47,18 +50,19 @@ Example of the .pre-commit-config.yaml file
 For CI you need to use flag --dry-run. Script returns list of files without SPDX header without trying to replace it.
 
 Example of Gitlab CI:
+
 ```yaml
 check_copyright:
   before_script:
-    - pip install git+https://github.com/espressif/check-copyright.git@master
+    - pip install git+https://github.com/Vaillant-NEEXT/check-copyright.git@main
   script:
     - python -m check_copyright --verbose --dry-run --ignore ci/ignore_list_copyright --config ci/check_copyright_config.yaml .
 ```
 
-
 # Configure ignore list
 
 To skip license header checks for some files, you can create a file with the list of paths to ignore. You should pass the path to the ignore list as the `--ignore` parameter.
+
 ```text
 tools/test1/main/test_file.c
 tools/test1/tools/pythonTestFile.py
@@ -79,22 +83,25 @@ DEFAULT:
   # what licenses (or license expressions) are allowed for files in this section
   # when setting this option in a section, you need to list all the allowed licenses
   allowed_licenses:
-    - Apache-2.0
-  license_for_new_files: Apache-2.0  # license to be used when inserting a new copyright notice
+    - Unlicense
+  license_for_new_files: Unlicense  # license to be used when inserting a new copyright notice
   new_notice_c: |  # notice for new C, CPP, H, HPP and LD files
+    /*
+     * SPDX-FileCopyrightText: {years} Vaillant Group International GmbH. All rights reserved.
+     * SPDX-License-Identifier: {license}
+     */
+  new_notice_python: |  # notice for new python files
+    # SPDX-FileCopyrightText: {years} Vaillant Group International GmbH. All rights reserved
+    # SPDX-License-Identifier: {license}
+
+  # comment lines matching <old_header> section
+  # are replaced with this template prefixed with the correct comment notation (# or // or *) and SPDX- notation
+  header_copyright: '{years} Vaillant Group International GmbH. All rights reserved.'
+
+  old_header: |  # old copyright header
     //
     // Copyright (c) {years} Vaillant Group International GmbH. All rights reserved.
     //
-  new_notice_python: |  # notice for new python files
-    # SPDX-FileCopyrightText: {years} Espressif Systems (Shanghai) CO LTD
-    # SPDX-License-Identifier: {license}
-
-  # comment lines matching:
-  # SPDX-FileCopyrightText: year[-year] Espressif Systems
-  # or
-  # SPDX-FileContributor: year[-year] Espressif Systems
-  # are replaced with this template prefixed with the correct comment notation (# or // or *) and SPDX- notation
-  espressif_copyright: '{years} Espressif Systems (Shanghai) CO LTD'
 
 # You can create your own rules for files or group of files
 examples_and_unit_tests:
@@ -124,7 +131,3 @@ ignore:  # You can also select ignoring files here
     - '!components/bt/host/bluedroid/btc/'
     - examples/zigbee/
 ```
-
-
-
-
