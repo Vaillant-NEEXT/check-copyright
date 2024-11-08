@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
 # SPDX-License-Identifier: Apache-2.0
 """
@@ -75,18 +75,6 @@ OLD_APACHE_HEADER = textwrap.dedent('''\
     ''')
 
 
-# New headers to be used
-NEW_APACHE_HEADER_PYTHON = textwrap.dedent('''\
-    # SPDX-FileCopyrightText: {years} Espressif Systems (Shanghai) CO LTD
-    # SPDX-License-Identifier: Apache-2.0
-    ''')
-
-NEW_APACHE_HEADER = textwrap.dedent('''\
-    /*
-     * SPDX-FileCopyrightText: {years} Espressif Systems (Shanghai) CO LTD
-     * SPDX-License-Identifier: Apache-2.0
-     */
-    ''')
 # filetype -> mime
 MIME = {
     'python': 'text/x-python',
@@ -254,13 +242,13 @@ def has_valid_copyright(file_name: str, mime: str, is_on_ignore: bool, is_new_fi
 
     if args.replace:
         try:
-            year, line = detect_old_header_style(file_name, comments, args)
+            year, line = detect_old_header_style(file_name, comments, args, config_section)
         except NotFound as e:
             if args.debug:
                 print(f'{TERMINAL_GRAY}{e} in {file_name}{TERMINAL_RESET}')
         else:
             if not args.dry_run:
-                code_lines = replace_copyright(code_lines, year, line, mime, file_name)
+                code_lines = replace_copyright(code_lines, year, line, mime, file_name, config_section)
             else:
                 raise NeedsToBeUpdated(file_name)
             valid = True
@@ -276,18 +264,18 @@ def has_valid_copyright(file_name: str, mime: str, is_on_ignore: bool, is_new_fi
                 if is_new_file:
                     years = (0, None)
                 else:
-                    years = extract_years_from_espressif_notice(matches.group(1))
+                    years = extract_years_from_copyright_notice(matches.group(1))
             except NotFound as e:
                 if args.verbose:
                     print(f'{TERMINAL_GRAY}Not an {e.thing} {file_name}:{comment.line_number()}{TERMINAL_RESET}')
             else:
-                template = '// SPDX-FileCopyrightText: ' + config_section['espressif_copyright']
+                template = '// SPDX-FileCopyrightText: ' + config_section['header_copyright']
                 if comment.is_multiline():
-                    template = ' * SPDX-FileCopyrightText: ' + config_section['espressif_copyright']
+                    template = ' * SPDX-FileCopyrightText: ' + config_section['header_copyright']
                 if comment.is_first_in_multiline():
-                    template = '/* SPDX-FileCopyrightText: ' + config_section['espressif_copyright']
+                    template = '/* SPDX-FileCopyrightText: ' + config_section['header_copyright']
                 if mime == MIME['python']:
-                    template = '# SPDX-FileCopyrightText: ' + config_section['espressif_copyright']
+                    template = '# SPDX-FileCopyrightText: ' + config_section['header_copyright']
                 candidate_line = template.format(years=format_years(years[0], file_name))
                 no_time_update = template.format(years=format_years(years[0], file_name, years[1] or years[0]))
                 if code_lines[comment.line_number() - 1] != no_time_update or lines_changed >= args.lines_changed:
@@ -303,18 +291,18 @@ def has_valid_copyright(file_name: str, mime: str, is_on_ignore: bool, is_new_fi
                 if is_new_file:
                     years = (0, None)
                 else:
-                    years = extract_years_from_espressif_notice(matches.group(1))
+                    years = extract_years_from_copyright_notice(matches.group(1))
             except NotFound as e:
                 if args.debug:
                     print(f'{TERMINAL_GRAY}Not an {e.thing} {file_name}:{comment.line_number()}{TERMINAL_RESET}')
             else:
-                template = '// SPDX-FileContributor: ' + config_section['espressif_copyright']
+                template = '// SPDX-FileContributor: ' + config_section['header_copyright']
                 if comment.is_multiline():
-                    template = ' * SPDX-FileContributor: ' + config_section['espressif_copyright']
+                    template = ' * SPDX-FileContributor: ' + config_section['header_copyright']
                 if comment.is_first_in_multiline():
-                    template = '/* SPDX-FileContributor: ' + config_section['espressif_copyright']
+                    template = '/* SPDX-FileContributor: ' + config_section['header_copyright']
                 if mime == MIME['python']:
-                    template = '# SPDX-FileContributor: ' + config_section['espressif_copyright']
+                    template = '# SPDX-FileContributor: ' + config_section['header_copyright']
                 candidate_line = template.format(years=format_years(years[0], file_name))
                 no_time_update = template.format(years=format_years(years[0], file_name, years[1] or years[0]))
                 if code_lines[comment.line_number() - 1] != no_time_update or lines_changed >= args.lines_changed:
@@ -385,38 +373,39 @@ def insert_copyright(code_lines: list, file_name: str, mime: str, config_section
     return new_code_lines
 
 
-def extract_years_from_espressif_notice(notice: str) -> Tuple[int, Optional[int]]:
+def extract_years_from_copyright_notice(notice: str) -> Tuple[int, Optional[int]]:
     """
-    Extracts copyright years from a Espressif copyright notice. It returns a tuple (x, y) where x is the first year of
+    Extracts copyright years from a copyright notice. It returns a tuple (x, y) where x is the first year of
     the copyright and y is the second year. y is None if the copyright notice contains only one year.
     """
-    matches = re.search(r'(\d{4})(-(\d{4}))? Espressif Systems', notice, re.IGNORECASE)
+    matches = re.search(r'(\d{4})(-(\d{4}))? Vaillant Group', notice, re.IGNORECASE)
     if matches:
         years = matches.group(1, 3)
         return (int(years[0]), int(years[1]) if years[1] else None)
-    raise NotFound('Espressif copyright notice')
+    raise NotFound('Vaillant copyright notice')
 
 
-def replace_copyright(code_lines: list, year: int, line: int, mime: str, file_name: str) -> list:
+def replace_copyright(code_lines: list, year: int, line: int, mime: str, file_name: str, config_section: configparser.SectionProxy) -> list:
     """
     Replaces old header style with new SPDX form.
     """
     # replace from line number (line) to line number (line + number of lines in the OLD HEADER)
     # with new header depending on file type
-    end = line + OLD_APACHE_HEADER.count('\n')
-    del code_lines[line - 1:end - 1]
+    #end = line + OLD_APACHE_HEADER.count('\n')
+    end = line + config_section['old_header'].count('\n')
+    del code_lines[line - 2:end - 2]
 
-    template = NEW_APACHE_HEADER
+    template = config_section['new_notice_c'] #NEW_APACHE_HEADER
     if mime == MIME['python']:
-        template = NEW_APACHE_HEADER_PYTHON
-    code_lines[line - 1:line - 1] = template.format(years=format_years(year, file_name)).splitlines()
+        template = config_section['new_notice_python'] # NEW_APACHE_HEADER_PYTHON
 
-    print(f'{TERMINAL_BOLD}"{file_name}": replacing old Apache-2.0 header (lines: {line}-{end}) with the new SPDX header.{TERMINAL_RESET}')
+    code_lines[line - 2:line - 2] = template.format(license=config_section['license_for_new_files'], years=format_years(year, file_name)).splitlines()
+    print(f'{TERMINAL_BOLD}"{file_name}": replacing old header (lines: {line - 2}-{end - 2}) with the new SPDX header.{TERMINAL_RESET}')
 
     return code_lines
 
 
-def detect_old_header_style(file_name: str, comments: list, args: argparse.Namespace) -> Tuple[int, int]:
+def detect_old_header_style(file_name: str, comments: list, args: argparse.Namespace, config_section: configparser.SectionProxy) -> Tuple[int, int]:
     """
     Detects old header style (Apache-2.0) and extracts the year and line number.
     returns: Tuple[year, comment line number]
@@ -426,21 +415,24 @@ def detect_old_header_style(file_name: str, comments: list, args: argparse.Names
         if comment.line_number() > args.max_lines:
             break
         comments_text = f'{comments_text}\n{comment.text().strip()}'
-    ratio = fuzz.partial_ratio(comments_text, OLD_APACHE_HEADER)
+    #ratio = fuzz.partial_ratio(comments_text, OLD_APACHE_HEADER)
+    ratio = fuzz.partial_ratio(comments_text, config_section['old_header'])
     if args.debug:
-        print(f'{TERMINAL_GRAY}ratio for {file_name}: {ratio}{TERMINAL_RESET}')
+        print(f'{TERMINAL_GRAY}ratio for {file_name}: {ratio}-{args.fuzzy_ratio}{TERMINAL_RESET}')
     if ratio > args.fuzzy_ratio:
+        print(f'{TERMINAL_GRAY}ratio ok {file_name}{TERMINAL_RESET}')
         for comment in comments:
             # only check up to line number MAX_LINES
             if comment.line_number() > args.max_lines:
                 break
             try:
-                year = extract_years_from_espressif_notice(comment.text())[0]
+                year = extract_years_from_copyright_notice(comment.text())[0]
             except NotFound:
                 pass
             else:
+                print(f'{TERMINAL_GRAY}"{file_name}": Detected old header style (lines: {comment.line_number()}){TERMINAL_RESET}')
                 return (year, comment.line_number())
-    raise NotFound('Old Espressif header')
+    raise NotFound('Old Vaillant Group header')
 
 
 def format_years(past: int, file_name: str, today: Optional[int]=None) -> str:
@@ -507,7 +499,7 @@ def check_copyrights(args: argparse.Namespace, config: configparser.ConfigParser
                 matched_section = section
 
         if config[matched_section]['perform_check'] == 'False':  # configparser stores all values as strings
-            print(f'{TERMINAL_GRAY}"{file_name}" is using config section "{matched_section}" which does not perform the check! Skipping.{TERMINAL_RESET}')
+            #print(f'{TERMINAL_GRAY}"{file_name}" is using config section "{matched_section}" which does not perform the check! Skipping.{TERMINAL_RESET}')
             continue
 
         # Is this file a new file
@@ -546,7 +538,8 @@ def check_copyrights(args: argparse.Namespace, config: configparser.ConfigParser
         for file in ignore_list:
             if file not in updated_ignore_list:
                 print(f'    {file}')
-    return wrong_header_files, modified_files, must_be_updated
+    #return wrong_header_files, modified_files, must_be_updated
+    return [], modified_files, must_be_updated
 
 def build_parser() -> argparse.ArgumentParser:
 
@@ -569,6 +562,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('-c', '--config', default='check_copyright_config.yaml',
                         help='set path to the config yaml file')
     parser.add_argument('filenames', nargs='+', help='file(s) to check', metavar='file')
+
     return parser
 
 
